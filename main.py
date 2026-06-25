@@ -108,6 +108,8 @@ def main(argv: list[str] | None = None) -> int:
     config = AppConfig.from_env(ai_mode=ai_mode)
     config.demo = args.demo
     config.profit = profit
+    # Demo is a simulation — don't persist (simulated-time) cooldowns across runs.
+    config.persist_state = not args.demo
     if args.live:
         from config import TradingMode
         config = AppConfig(

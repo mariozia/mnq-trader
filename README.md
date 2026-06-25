@@ -4,6 +4,28 @@ LLM-driven directional trading engine for **MNQ futures** on TopstepX.
 
 Three trading modes share the same data pipeline, gate chain, and execution layer — the difference is how the LLM is prompted and how decisions are made.
 
+> **New here / handing this off?** Read **[SETUP.md](SETUP.md)** — a complete,
+> zero-context guide to install and run the project, with instructions for
+> connecting real Claude and the Topstep broker when you're ready.
+
+## TL;DR (runs with no API keys)
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+python main.py --ai dual --demo --cycles 30     # watch a simulated trade
+python main.py --ai dual --backtest --days 30    # profitability report
+python backtest.py --compare-exits --ai dual     # A/B test exits
+python analyze.py my_trades.csv                   # analyze YOUR real trades
+```
+
+Or use the shortcuts: `make setup`, `make demo`, `make backtest`, `make compare`.
+
+**Status:** mock/demo/backtest/analyze work out of the box. Real Claude needs
+`ANTHROPIC_API_KEY` (adapter ready). Live data feed + Topstep order execution
+are the two pieces to wire for paper/live trading — see [SETUP.md](SETUP.md) §8–9.
+
 ## Modes
 
 | Mode | Flag | Description |

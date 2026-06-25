@@ -1,0 +1,11 @@
+# Core runtime dependencies for MNQ Trader
+# Install with:  pip install -r requirements.txt
+
+anthropic>=0.40.0      # LLM trading decisions (only needed for --live with a real key)
+numpy>=1.26.0          # indicator math
+pandas>=2.2.0          # bar / indicator data frames
+python-dotenv>=1.0.0   # loads .env config
+pytz>=2024.1           # DST-safe session scheduling
+
+# Optional (development / tests)
+# pytest>=8.0.0
