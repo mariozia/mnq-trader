@@ -9,7 +9,9 @@ import sys
 import time
 from datetime import datetime
 
-from config import AIMode, AppConfig
+from datetime import timedelta
+
+from config import AIMode, AppConfig, ProfitConfig
 from engine.directional_engine import DirectionalEngine
 from engine.dual_engine import DualEngine
 
@@ -65,12 +67,47 @@ def main(argv: list[str] | None = None) -> int:
         default=5,
         help="Blind recon interval in seconds (default: 5)",
     )
+    parser.add_argument(
+        "--backtest",
+        action="store_true",
+        help="Run a multi-day backtest and print a profitability report",
+    )
+    parser.add_argument(
+        "--days", type=int, default=30, help="Backtest days (default: 30)"
+    )
+    # Dynamic exit (profit-taking) controls
+    parser.add_argument("--no-breakeven", action="store_true", help="Disable breakeven stop")
+    parser.add_argument("--no-trailing", action="store_true", help="Disable trailing stop")
+    parser.add_argument("--trail-trigger-r", type=float, default=1.0)
+    parser.add_argument("--trail-dist-r", type=float, default=0.75)
+    parser.add_argument("--scalp", action="store_true", help="Enable scalp-take exit (grab the green)")
+    parser.add_argument("--scalp-r", type=float, default=0.75)
+    parser.add_argument("--max-hold-bars", type=int, default=0)
 
     args = parser.parse_args(argv)
 
     ai_mode = AIMode(args.ai)
+    profit = ProfitConfig(
+        breakeven_enabled=not args.no_breakeven,
+        trailing_enabled=not args.no_trailing,
+        trailing_trigger_r=args.trail_trigger_r,
+        trailing_distance_r=args.trail_dist_r,
+        scalp_enabled=args.scalp,
+        scalp_target_r=args.scalp_r,
+        max_hold_bars=args.max_hold_bars,
+    )
+
+    if args.backtest:
+        from analytics.metrics import format_report
+        from backtest import run_backtest
+
+        report, _ = run_backtest(ai_mode, days=args.days, profit=profit)
+        print(format_report(report, title=f"{ai_mode.value} — {args.days} days"))
+        return 0
+
     config = AppConfig.from_env(ai_mode=ai_mode)
     config.demo = args.demo
+    config.profit = profit
     if args.live:
         from config import TradingMode
         config = AppConfig(
@@ -79,6 +116,7 @@ def main(argv: list[str] | None = None) -> int:
             demo=args.demo,
             gates=config.gates,
             engine=config.engine,
+            profit=profit,
             anthropic_api_key=config.anthropic_api_key,
             topstepx_api_key=config.topstepx_api_key,
             topstepx_username=config.topstepx_username,
@@ -96,11 +134,19 @@ def main(argv: list[str] | None = None) -> int:
 
     cycle = 0
     last_recon = time.time()
+    # In demo mode, advance a simulated clock by one bar per cycle so the full
+    # entry -> manage -> exit lifecycle plays out quickly.
+    sim_now = datetime(2025, 1, 6, 8, 30) if args.demo else None
+    bar_seconds = config.engine.cycle_seconds * 5  # 5-min bars
 
     try:
         while True:
             cycle += 1
-            now = datetime.now()
+            if args.demo:
+                now = sim_now
+                sim_now = sim_now + timedelta(seconds=bar_seconds)
+            else:
+                now = datetime.now()
 
             # Blind recon every N seconds
             if time.time() - last_recon >= args.recon_interval:

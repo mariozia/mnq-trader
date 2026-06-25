@@ -29,6 +29,10 @@ class BarBuilder:
             "daily": 14,
         }
 
+    def set_trend_bias(self, trend_bias: float) -> None:
+        """Change the drift regime (used by the backtester to simulate days)."""
+        self._trend_bias = trend_bias
+
     def generate_mock_bars(
         self,
         count_5m: int = 60,

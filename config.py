@@ -50,6 +50,36 @@ class EngineConfig:
     point_value: float = 2.0  # $2 per point per contract on MNQ
 
 
+@dataclass
+class ProfitConfig:
+    """Dynamic exit management — the 'take the green while it's there' layer.
+
+    All thresholds are expressed in R (multiples of initial risk = distance
+    from entry to the original stop), so 'green enough' scales with each trade
+    instead of being a fixed dollar amount.
+    """
+
+    # Breakeven: once price runs +breakeven_trigger_r in our favor, pull the
+    # stop up to entry (+ a small offset) so a winner can't become a loser.
+    breakeven_enabled: bool = True
+    breakeven_trigger_r: float = 0.5
+    breakeven_offset_points: float = 1.0
+
+    # Trailing stop: once price runs +trailing_trigger_r, trail the stop
+    # trailing_distance_r behind the best price seen.
+    trailing_enabled: bool = True
+    trailing_trigger_r: float = 1.0
+    trailing_distance_r: float = 0.75
+
+    # Scalp take: immediately market-close at +scalp_target_r. This mimics the
+    # "instantly green, grab it" behavior. Off by default so you can A/B it.
+    scalp_enabled: bool = False
+    scalp_target_r: float = 0.75
+
+    # Force a flat exit after N bars if the trade never got green (0 = off).
+    max_hold_bars: int = 0
+
+
 SIZING: dict[AIMode, SizingConfig] = {
     AIMode.SHORT_ONLY: SizingConfig(rth=10, overnight=5),
     AIMode.LONG_ONLY: SizingConfig(rth=10, overnight=5),
@@ -64,6 +94,8 @@ class AppConfig:
     demo: bool = False
     gates: GateConfig = field(default_factory=GateConfig)
     engine: EngineConfig = field(default_factory=EngineConfig)
+    profit: ProfitConfig = field(default_factory=ProfitConfig)
+    persist_state: bool = True
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-opus-4-20250514"
     topstepx_api_key: str = ""

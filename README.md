@@ -42,12 +42,17 @@ source .venv/bin/activate
 # Install dependencies
 pip install -e .
 
-# Run in mock mode (paper trading, no API keys needed)
-python main.py --ai dual --cycles 10
+# Demo a full trade lifecycle on seeded data (no API keys needed)
+python main.py --ai dual --demo --cycles 20
 
-# Other modes
-python main.py --ai short-only --cycles 5
-python main.py --ai long-only --cycles 5
+# Backtest across 30 simulated trading days and print a profitability report
+python main.py --ai dual --backtest --days 30
+
+# A/B test exit strategies (far TP vs breakeven+trailing vs scalp)
+python backtest.py --compare-exits --ai dual --days 40
+
+# Analyze YOUR real trades (export fills to CSV first)
+python analyze.py my_real_trades.csv
 ```
 
 ## Configuration
@@ -97,6 +102,53 @@ FLAT → LLM entry signal → Gates pass → Bracket order
   ├── TP fill → 15-min cooldown
   └── LLM exit (thesis broken) or reversal (dual mode)
 ```
+
+## Dynamic Exits ("take the green while it's there")
+
+A far take-profit lets winners round-trip into losers. The `ProfitManager`
+actively manages every open position against its **initial risk (R = entry-to-stop)**:
+
+| Mechanism | Default | What it does |
+|-----------|---------|--------------|
+| Breakeven stop | +0.5R | Pull stop to entry so a winner can't go red |
+| Trailing stop | +1.0R, trail 0.75R | Ratchet the stop behind the best price |
+| Scalp take | off (+0.75R) | Immediately market-close to grab quick green |
+| Time stop | off | Force-exit a stale, never-green trade |
+
+"Green enough" is expressed as an **R-multiple**, so it scales per trade instead
+of being a fixed dollar amount that's too tight on big moves and too loose on small.
+
+```bash
+# Tune via CLI
+python main.py --backtest --ai dual --scalp --scalp-r 0.75
+python main.py --backtest --ai dual --no-trailing --no-breakeven
+```
+
+## Measuring Profitability
+
+```bash
+# Backtest + export every trade to CSV
+python backtest.py --ai dual --days 30 --export trades.csv
+
+# Run the same metrics on your real fills
+python analyze.py trades.csv
+```
+
+The report shows win rate, **profit factor**, expectancy (in $ and R), max
+drawdown, and **MFE/MAE** (max favorable/adverse excursion). MFE vs realized win
+is the key diagnostic: if your trades go green far but you capture little, a
+trailing or scalp exit will raise expectancy.
+
+> **Important:** the built-in simulator is a *random walk* — it validates the
+> mechanics and lets you tune exits, but it has **no real edge**, so absolute
+> backtest P&L is not a verdict on your strategy. To measure real profitability,
+> feed real historical data + real LLM calls, or paper-trade live (below) and
+> analyze the resulting trade log.
+
+### Real-trade CSV format
+
+Minimum columns: `entry_time, exit_time, direction, entry_price, exit_price, size, pnl`.
+Optional but valuable: `risk_points, mfe_points, mae_points`.
 
 ## Live Integration
 

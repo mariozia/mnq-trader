@@ -12,11 +12,13 @@ from models import EngineState, TradeRecord
 class StateStore:
     STATE_FILE = "engine_state.json"
 
-    def __init__(self, data_dir: Path | None = None) -> None:
+    def __init__(self, data_dir: Path | None = None, persist: bool = True) -> None:
+        self.persist = persist
         self.data_dir = data_dir or Path(".state")
-        self.data_dir.mkdir(exist_ok=True)
         self.state = EngineState()
-        self._load()
+        if self.persist:
+            self.data_dir.mkdir(exist_ok=True)
+            self._load()
 
     def _path(self) -> Path:
         return self.data_dir / self.STATE_FILE
@@ -33,6 +35,8 @@ class StateStore:
             pass
 
     def save(self) -> None:
+        if not self.persist:
+            return
         data = {
             "cooldown_until": (
                 self.state.cooldown_until.isoformat()
@@ -48,8 +52,9 @@ class StateStore:
             return True
         return False
 
-    def start_cooldown(self, minutes: int = 15) -> None:
-        self.state.cooldown_until = datetime.now() + timedelta(minutes=minutes)
+    def start_cooldown(self, minutes: int = 15, now: datetime | None = None) -> None:
+        base = now or datetime.now()
+        self.state.cooldown_until = base + timedelta(minutes=minutes)
         self.save()
 
     def clear_cooldown(self) -> None:

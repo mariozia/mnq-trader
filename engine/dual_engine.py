@@ -23,6 +23,8 @@ class DualEngine(DirectionalEngine):
             demo=config.demo,
             gates=config.gates,
             engine=config.engine,
+            profit=config.profit,
+            persist_state=config.persist_state,
             anthropic_api_key=config.anthropic_api_key,
             anthropic_model=config.anthropic_model,
             topstepx_api_key=config.topstepx_api_key,
@@ -84,11 +86,26 @@ class DualEngine(DirectionalEngine):
         }
 
     def _handle_in_position(
-        self, ctx: PromptContext, snapshot, position: Position
+        self, ctx: PromptContext, snapshot, position: Position, now: datetime
     ) -> dict:
-        fill = self.broker.check_bracket_fills(snapshot.last_price)
+        high, low = self._bar_hl(snapshot)
+
+        # Dynamic exit layer (breakeven / trailing / scalp) runs first.
+        self.profit_manager.update_trailing(position, high, low)
+        fill = self.broker.check_bar_fills(high, low)
         if fill:
-            return self._process_exit(fill)
+            return self._process_exit(fill, now)
+
+        scalp = self.profit_manager.scalp_signal(position, high, low)
+        if scalp.triggered:
+            trade = self.broker.close_at_price(scalp.price, reason=scalp.reason)
+            if trade:
+                return self._process_exit(trade, now)
+
+        if self.profit_manager.time_stop(position):
+            trade = self.broker.close_at_price(snapshot.last_price, reason="Time stop")
+            if trade:
+                return self._process_exit(trade, now)
 
         # Stage 1: same-direction exit evaluation
         if position.is_long:
@@ -101,7 +118,7 @@ class DualEngine(DirectionalEngine):
                 snapshot.last_price, reason="LLM exit (thesis broken)"
             )
             if trade:
-                return self._process_exit(trade)
+                return self._process_exit(trade, now)
 
         # Stage 2: opposing direction check for reversal
         if position.is_long:

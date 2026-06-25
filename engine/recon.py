@@ -37,14 +37,10 @@ class BlindRecon:
         engine_pos = self.state.state.position
         exchange_pos = exchange.position
 
-        # Check bracket fills first
-        fill = self.broker.check_bracket_fills(current_price)
-        if fill:
-            self.state.state.position = None
-            self.state.record_trade(fill)
-            self.state.start_cooldown()
-            logger.info("Recon: bracket fill detected — %s P&L=$%.2f", fill.exit_reason, fill.pnl)
-            return ReconResult(synced=True, action=f"bracket_fill:{fill.exit_reason}")
+        # NOTE: in mock mode the engine simulates bracket fills directly in the
+        # in-position handler (intrabar high/low). Recon here only reconciles
+        # engine state against the exchange's reported position — the live
+        # safety net for fills the engine missed or positions it didn't open.
 
         if engine_pos and not exchange_pos:
             self.state.state.position = None

@@ -105,6 +105,20 @@ class Position:
     stop_loss: float
     take_profit: float
     unrealized_pnl: float = 0.0
+    initial_stop: float = 0.0
+    max_favorable_price: float = 0.0
+    max_adverse_price: float = 0.0
+    breakeven_moved: bool = False
+    trailing_active: bool = False
+    bars_held: int = 0
+
+    def __post_init__(self) -> None:
+        if self.initial_stop == 0.0:
+            self.initial_stop = self.stop_loss
+        if self.max_favorable_price == 0.0:
+            self.max_favorable_price = self.entry_price
+        if self.max_adverse_price == 0.0:
+            self.max_adverse_price = self.entry_price
 
     @property
     def is_long(self) -> bool:
@@ -113,6 +127,11 @@ class Position:
     @property
     def is_short(self) -> bool:
         return self.direction == Direction.SHORT
+
+    @property
+    def risk_points(self) -> float:
+        """Initial risk in points (entry to original stop)."""
+        return abs(self.entry_price - self.initial_stop)
 
 
 @dataclass
@@ -125,6 +144,11 @@ class TradeRecord:
     entry_time: datetime
     exit_time: datetime
     exit_reason: str
+    risk_points: float = 0.0
+    mfe_points: float = 0.0
+    mae_points: float = 0.0
+    r_multiple: float = 0.0
+    bars_held: int = 0
 
 
 @dataclass
