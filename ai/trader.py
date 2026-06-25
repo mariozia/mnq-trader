@@ -146,7 +146,7 @@ class Trader:
     }
 
     def __init__(self, config: AppConfig) -> None:
-        if config.trading_mode == TradingMode.LIVE and config.anthropic_api_key:
+        if config.trading_mode in (TradingMode.LIVE, TradingMode.PAPER) and config.anthropic_api_key:
             self.backend: TraderBackend = AnthropicTrader(
                 api_key=config.anthropic_api_key,
                 model=config.anthropic_model,

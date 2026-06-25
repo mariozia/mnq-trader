@@ -11,7 +11,7 @@ from datetime import datetime
 
 from datetime import timedelta
 
-from config import AIMode, AppConfig, ProfitConfig
+from config import AIMode, AppConfig, DataFeed, ProfitConfig, TradingMode
 from engine.directional_engine import DirectionalEngine
 from engine.dual_engine import DualEngine
 
@@ -62,6 +62,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Use live APIs (requires credentials in .env)",
     )
     parser.add_argument(
+        "--paper",
+        action="store_true",
+        help="Paper trade: real Yahoo NQ data + simulated fills + real Claude",
+    )
+    parser.add_argument(
+        "--no-wait",
+        action="store_true",
+        help="Paper mode: run cycles immediately (don't wait for 5m bar close)",
+    )
+    parser.add_argument(
         "--recon-interval",
         type=int,
         default=5,
@@ -106,12 +116,29 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     config = AppConfig.from_env(ai_mode=ai_mode)
-    config.demo = args.demo
+    config.demo = args.demo and not args.paper
     config.profit = profit
-    # Demo is a simulation — don't persist (simulated-time) cooldowns across runs.
     config.persist_state = not args.demo
-    if args.live:
-        from config import TradingMode
+
+    if args.paper:
+        config = AppConfig(
+            trading_mode=TradingMode.PAPER,
+            ai_mode=ai_mode,
+            demo=False,
+            data_feed=DataFeed.YAHOO,
+            gates=config.gates,
+            engine=config.engine,
+            profit=profit,
+            persist_state=True,
+            anthropic_api_key=config.anthropic_api_key,
+            anthropic_model=config.anthropic_model,
+            yahoo_symbol=config.yahoo_symbol,
+            paper_journal_path=config.paper_journal_path,
+            topstepx_api_key=config.topstepx_api_key,
+            topstepx_username=config.topstepx_username,
+            discord_webhook_url=config.discord_webhook_url,
+        )
+    elif args.live:
         config = AppConfig(
             trading_mode=TradingMode.LIVE,
             ai_mode=ai_mode,
@@ -132,8 +159,26 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("MNQ Trader starting")
     logger.info("  Mode: %s", config.ai_mode.value)
     logger.info("  Trading: %s", config.trading_mode.value)
+    if config.trading_mode == TradingMode.PAPER:
+        logger.info("  Data feed: %s (%s)", config.data_feed.value, config.yahoo_symbol)
+        logger.info("  Paper journal: %s", config.paper_journal_path)
     logger.info("  Cycles: %s", "infinite" if args.cycles == 0 else args.cycles)
     logger.info("=" * 60)
+
+    # Preflight: verify Yahoo data loads before entering the loop
+    if config.trading_mode == TradingMode.PAPER:
+        try:
+            snap = engine.pipeline.fetch_snapshot()
+            logger.info(
+                "Live data OK — %s @ %.2f | trend=%.0f | %d x5m bars",
+                engine.pipeline.source,
+                snap.last_price,
+                snap.context.trend,
+                len(snap.bars_5m),
+            )
+        except Exception as exc:
+            logger.error("Failed to fetch live market data: %s", exc)
+            return 1
 
     cycle = 0
     last_recon = time.time()
@@ -211,7 +256,12 @@ def main(argv: list[str] | None = None) -> int:
             if args.cycles > 0 and cycle >= args.cycles:
                 break
 
-            time.sleep(args.interval)
+            if args.paper and not args.no_wait and args.cycles == 0:
+                from engine.bar_clock import wait_for_next_bar
+
+                wait_for_next_bar(bar_minutes=5, settle_seconds=5)
+            else:
+                time.sleep(args.interval)
 
     except KeyboardInterrupt:
         logger.info("Shutting down...")
@@ -221,6 +271,8 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("  Daily P&L: $%.2f", engine.account.daily_pnl)
     logger.info("  Trades: %d", engine.account.trades_today)
     logger.info("  Balance: $%.2f", engine.account.balance)
+    if engine.paper_journal:
+        logger.info("  Paper log: %s", engine.paper_journal.summary())
     logger.info("=" * 60)
 
     return 0

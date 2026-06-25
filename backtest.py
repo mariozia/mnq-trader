@@ -25,6 +25,7 @@ from datetime import datetime, timedelta
 import pytz
 
 from analytics.metrics import compute_metrics, format_report
+from data.feeds.mock import MockDataFeed
 from config import AIMode, AppConfig, ProfitConfig, TradingMode
 from engine.directional_engine import DirectionalEngine
 from engine.dual_engine import DualEngine
@@ -87,7 +88,9 @@ def run_backtest(
     for day_idx, day in enumerate(_trading_days(days)):
         engine.reset_for_new_day()
         bias = REGIMES[(day_idx + seed_offset) % len(REGIMES)]
-        engine.pipeline.bar_builder.set_trend_bias(bias)
+        feed = engine.pipeline.feed
+        if isinstance(feed, MockDataFeed):
+            feed.bar_builder.set_trend_bias(bias)
         for ts in _session_timestamps(day):
             engine.run_cycle(ts.astimezone())
 

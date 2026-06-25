@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 
 from ai.trader import Trader
-from config import AIMode, AppConfig, SIZING
+from config import AIMode, AppConfig, SIZING, TradingMode
 from data.pipeline import DataPipeline
 from dom.dom_analyzer import DOMAnalyzer
 from execution.brackets import build_bracket
@@ -38,11 +38,17 @@ class DirectionalEngine:
         self.mode = config.ai_mode
         self.allowed_direction = self._resolve_direction()
 
-        self.pipeline = DataPipeline(dom_analyzer=DOMAnalyzer(), demo=config.demo)
+        self.pipeline = DataPipeline(config=config, dom_analyzer=DOMAnalyzer())
         self.trader = Trader(config)
         self.scheduler = Scheduler()
         self.state_store = StateStore(persist=config.persist_state)
         self.profit_manager = ProfitManager(config.profit)
+        self.paper_journal = None
+        if config.trading_mode == TradingMode.PAPER:
+            from pathlib import Path
+            from state.paper_journal import PaperJournal
+
+            self.paper_journal = PaperJournal(Path(config.paper_journal_path))
 
         sizing = SIZING[self.mode]
         self.rth_size = sizing.rth
@@ -236,6 +242,9 @@ class DirectionalEngine:
             trade.r_multiple,
             trade.exit_reason,
         )
+        if self.paper_journal:
+            self.paper_journal.record(trade)
+            logger.info("Paper journal: %s", self.paper_journal.summary())
         return {
             "action": "exit",
             "pnl": trade.pnl,

@@ -13,7 +13,13 @@ load_dotenv()
 
 class TradingMode(str, Enum):
     MOCK = "mock"
-    LIVE = "live"
+    PAPER = "paper"  # real market data + simulated fills + real Claude
+    LIVE = "live"    # real data + real broker + real Claude
+
+
+class DataFeed(str, Enum):
+    MOCK = "mock"
+    YAHOO = "yahoo"
 
 
 class AIMode(str, Enum):
@@ -96,6 +102,9 @@ class AppConfig:
     engine: EngineConfig = field(default_factory=EngineConfig)
     profit: ProfitConfig = field(default_factory=ProfitConfig)
     persist_state: bool = True
+    data_feed: DataFeed = DataFeed.MOCK
+    yahoo_symbol: str = "NQ=F"
+    paper_journal_path: str = ".paper/trades.csv"
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-opus-4-6"
     topstepx_api_key: str = ""
@@ -105,9 +114,13 @@ class AppConfig:
     @classmethod
     def from_env(cls, ai_mode: AIMode | None = None) -> AppConfig:
         mode_str = os.getenv("TRADING_MODE", "mock").lower()
+        feed_str = os.getenv("DATA_FEED", "mock").lower()
         return cls(
             trading_mode=TradingMode(mode_str),
             ai_mode=ai_mode or AIMode.DUAL,
+            data_feed=DataFeed(feed_str),
+            yahoo_symbol=os.getenv("YAHOO_SYMBOL", "NQ=F"),
+            paper_journal_path=os.getenv("PAPER_JOURNAL", ".paper/trades.csv"),
             anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-opus-4-6"),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
             topstepx_api_key=os.getenv("TOPSTEPX_API_KEY", ""),

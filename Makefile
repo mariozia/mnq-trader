@@ -9,7 +9,8 @@ help:
 	@echo "  make demo       Run a simulated trade lifecycle (dual mode)"
 	@echo "  make backtest   Run a 30-day backtest (dual mode)"
 	@echo "  make compare    A/B test exit strategies"
-	@echo "  make verify     Quick end-to-end smoke test"
+	@echo "  make paper      Paper trade on real Yahoo NQ data (2 cycles)"
+	@echo "  make analyze    Analyze a trade CSV (make analyze CSV=trades.csv)"
 	@echo "  make clean      Remove venv and saved state"
 
 setup:
@@ -26,6 +27,9 @@ backtest:
 compare:
 	$(PY) backtest.py --compare-exits --ai dual --days 40
 
+paper:
+	$(PY) main.py --ai dual --paper --cycles 2 --no-wait --interval 0
+
 analyze:
 	@test -n "$(CSV)" || (echo "Usage: make analyze CSV=path/to/trades.csv" && exit 1)
 	$(PY) analyze.py $(CSV)
@@ -35,4 +39,4 @@ verify:
 	$(PY) main.py --ai dual --backtest --days 10
 
 clean:
-	rm -rf .venv .state
+	rm -rf .venv .state .paper

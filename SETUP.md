@@ -22,7 +22,8 @@ context required. Follow it top to bottom.
 | Analyze your real trades from a CSV | ✅ Yes | nothing |
 | Rule-based "mock" LLM decisions | ✅ Yes | nothing |
 | **Real Claude decisions** | ⚙️ Ready | `ANTHROPIC_API_KEY` |
-| **Live market data feed** | ❌ Not built | a data source (see §8) |
+| **Paper trading (real Yahoo NQ data)** | ✅ Yes | `ANTHROPIC_API_KEY` + `pip install yfinance` |
+| **Live market data feed (broker)** | ❌ Not built | broker API (see §8) |
 | **Real / sim order execution (TopstepX)** | ⚙️ Stub | implement adapter + keys (§9) |
 
 So: **you can fully test, backtest, and tune the system right now with zero
@@ -88,12 +89,26 @@ Export your fills to a CSV with at least these columns:
 python analyze.py my_real_trades.csv
 ```
 
+### e) Paper trade on **real** Nasdaq futures data (needs Anthropic key)
+```bash
+cp .env.example .env
+# Add ANTHROPIC_API_KEY=sk-ant-... to .env
+
+python main.py --ai dual --paper --cycles 2 --no-wait    # quick test (2 decisions now)
+python main.py --ai dual --paper --cycles 0              # run forever, waits for each 5m bar
+python analyze.py .paper/trades.csv                        # see if it's profitable
+```
+Uses Yahoo `NQ=F` (~15 min delayed) for real market structure. Fills are
+simulated locally; every closed trade appends to `.paper/trades.csv`.
+
+---
+
 > ⚠️ **Read this about the backtester:** the built-in price feed is a *random
 > walk* with **no real edge**. It validates the mechanics and lets you tune
 > exits, but the absolute backtest P&L is NOT a verdict on the strategy. Real
-> profitability can only be judged on **real data + real LLM** or a live paper
-> account (§8). The most useful real-world signal is **MFE vs. your realized
-> win** from `analyze.py` on your actual trades.
+> profitability can only be judged on **real data + real LLM** or paper trading
+> (§4e). The most useful real-world signal is **MFE vs. your realized win**
+> from `analyze.py` on your actual trades.
 
 ---
 

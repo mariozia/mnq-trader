@@ -9,6 +9,7 @@ venv/
 
 # State & secrets
 .state/
+.paper/
 .env
 
 # IDE

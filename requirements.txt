@@ -6,6 +6,7 @@ numpy>=1.26.0          # indicator math
 pandas>=2.2.0          # bar / indicator data frames
 python-dotenv>=1.0.0   # loads .env config
 pytz>=2024.1           # DST-safe session scheduling
+yfinance>=0.2.40       # delayed NQ futures data for paper trading
 
 # Optional (development / tests)
 # pytest>=8.0.0

@@ -17,14 +17,13 @@ pip install -r requirements.txt
 python main.py --ai dual --demo --cycles 30     # watch a simulated trade
 python main.py --ai dual --backtest --days 30    # profitability report
 python backtest.py --compare-exits --ai dual     # A/B test exits
-python analyze.py my_trades.csv                   # analyze YOUR real trades
+python main.py --ai dual --paper --cycles 2 --no-wait   # real NQ data + Claude (needs API key)
+python analyze.py .paper/trades.csv                      # analyze paper results
 ```
 
-Or use the shortcuts: `make setup`, `make demo`, `make backtest`, `make compare`.
+Or use the shortcuts: `make setup`, `make demo`, `make backtest`, `make paper`, `make compare`.
 
-**Status:** mock/demo/backtest/analyze work out of the box. Real Claude needs
-`ANTHROPIC_API_KEY` (adapter ready). Live data feed + Topstep order execution
-are the two pieces to wire for paper/live trading — see [SETUP.md](SETUP.md) §8–9.
+**Status:** mock/demo/backtest/analyze work out of the box. **Paper trading** (`--paper`) uses real Yahoo NQ data + real Claude + simulated fills and logs to `.paper/trades.csv`. Live broker execution is the last piece (SETUP.md §9).
 
 ## Modes
 
