@@ -1,0 +1,27 @@
+[project]
+name = "mnq-trader"
+version = "0.1.0"
+description = "LLM-driven directional trading engine for MNQ futures on TopstepX"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.40.0",
+    "numpy>=1.26.0",
+    "pandas>=2.2.0",
+    "python-dotenv>=1.0.0",
+    "pytz>=2024.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0", "pytest-asyncio>=0.24.0"]
+
+[project.scripts]
+mnq-trader = "main:main"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ai*", "data*", "dom*", "engine*", "execution*", "gates*", "risk*", "state*"]
