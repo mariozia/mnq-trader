@@ -97,7 +97,7 @@ class AppConfig:
     profit: ProfitConfig = field(default_factory=ProfitConfig)
     persist_state: bool = True
     anthropic_api_key: str = ""
-    anthropic_model: str = "claude-opus-4-20250514"
+    anthropic_model: str = "claude-opus-4-6"
     topstepx_api_key: str = ""
     topstepx_username: str = ""
     discord_webhook_url: str = ""
@@ -108,6 +108,7 @@ class AppConfig:
         return cls(
             trading_mode=TradingMode(mode_str),
             ai_mode=ai_mode or AIMode.DUAL,
+            anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-opus-4-6"),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
             topstepx_api_key=os.getenv("TOPSTEPX_API_KEY", ""),
             topstepx_username=os.getenv("TOPSTEPX_USERNAME", ""),

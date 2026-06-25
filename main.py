@@ -120,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
             engine=config.engine,
             profit=profit,
             anthropic_api_key=config.anthropic_api_key,
+            anthropic_model=config.anthropic_model,
             topstepx_api_key=config.topstepx_api_key,
             topstepx_username=config.topstepx_username,
             discord_webhook_url=config.discord_webhook_url,
